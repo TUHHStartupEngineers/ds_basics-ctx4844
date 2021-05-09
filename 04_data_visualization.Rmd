@@ -1,0 +1,153 @@
+---
+title: "04 Data Visualization"
+date: "2021-04"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    collapsed: false
+    number_sections: true
+    toc_depth: 3
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=FALSE,warning=FALSE, cache=TRUE)
+```
+
+
+##Task 1:
+
+##Goal: Map the time course of the cumulative Covid-19 cases! 
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+library(maps)
+library(ggrepel)
+library(purrr)
+
+
+
+#Loading and preprocessing  data 
+covid_data_tbl <- read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv") %>%
+  select(location, date, total_cases) %>%
+  filter(location == "Germany" | location == "United Kingdom" | location == "France" | location == "Spain" | location == "United States")%>%
+  mutate(cases_dec = scales::dollar(total_cases, big.mark = ".", 
+                                    decimal.mark = ",", 
+                                    prefix = "", 
+                                    suffix = ""))
+
+
+#Data Visualization challenge 1 : plotting data
+
+covid_data_tbl %>%
+  ggplot(aes(x = date, y = total_cases, color = location)) +
+  
+  
+  geom_line(size = 1) +
+  
+  geom_label_repel(aes(x=date, y=total_cases, label=cases_dec) , 
+                   data = covid_data_tbl %>% slice(which.max(total_cases)),
+                   vjust = 0.5, 
+                   hjust = 0.5,color = "red")+
+  
+  expand_limits(y = 0) +
+  
+  scale_y_continuous(labels = scales::dollar_format(scale = 1/1e6,
+                                                    prefix = "",
+                                                    suffix = "M")) +
+  
+  scale_x_date(date_labels = "%B %Y", 
+               date_breaks = "1 month", 
+               expand = c(0,NA)) +
+  # Plot labeling 
+  
+  labs(
+    title = "Worldwide Covid-19 Confirmed cases",
+    subtitle = "As of 07/05/2021",
+    x = "Months",
+    y = "Cumulative Cases",
+    color = "Country or Location"
+  )  +
+  
+  theme_light() +
+  theme(title = element_text(face = "bold", color = "cyan4"),
+        legend.position  = "Right",
+        axis.text.x = element_text(angle = 90))
+
+
+```
+
+##Task 2:
+
+##Visualize the distribution of the mortality rate (deaths / population) with geom_map().You have to join the lat/long data and the Covid data. Unfortunately, the countries are not named identically in each dataset.
+
+
+```{r}
+
+
+
+
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+library(maps)
+library(ggrepel)
+library(purrr)
+
+
+  
+
+covid_data_tbl <- read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")%>%
+  
+  mutate(mort_rate = total_deaths/population)%>%
+  
+  group_by(location) %>% summarise(Mortality_Rate = last(mort_rate))%>%
+  
+  select(location, Mortality_Rate)%>%
+  
+  mutate(location = case_when(
+    
+    location == "United Kingdom" ~ "UK",
+    location == "United States" ~ "USA",
+    location == "Democratic Republic of Congo" ~ "Democratic Republic of the Congo",
+    TRUE ~ location
+    
+  )) %>%
+  distinct()
+
+world <- map_data("world")
+
+covid_coord <- merge(x=world,y=covid_data_tbl, by.x = "region", by.y = "location")%>%
+ 
+  select(region, long,lat,Mortality_Rate)
+
+# creating world map plot using geom map
+
+covid_coord %>% ggplot() + 
+  
+  geom_map(aes(x = long, y = lat, map_id = region, fill = Mortality_Rate), map = world) +
+  
+  # Plot labeling 
+  
+  scale_fill_continuous(labels = scales::percent_format(accuracy = 0.001), low = "green4", high = "red4") +
+  labs(
+    title = "Confirmed COVID-19 deaths relative to the size of the population",
+    subtitle = "More than 3 Million confirmed Covid-19 deaths worldwide",
+    caption = "Date: 05/07/2021") +
+  
+  
+  theme(axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank()) +
+  
+  theme(title = element_text(face = "bold", color = "slateblue2"),
+        legend.position  = "right")
+
+
+
+
+
+
+```

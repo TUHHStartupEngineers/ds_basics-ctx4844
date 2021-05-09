@@ -1,0 +1,155 @@
+---
+title: "01 Intro to the tidyverse"
+author: "Mohammad Alam"
+date: "07-05-2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    collapsed: false
+    number_sections: true
+    toc_depth: 3
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=FALSE,warning=FALSE, cache=TRUE)
+```
+
+Analyze the sales by location (state) with a bar plot. Since state and city are multiple features (variables), they should be split. Which state has the highes revenue? Replace your bike_orderlines_wrangled_tbl object with the newly wrangled object (with the columns state and city).
+
+```{r}
+
+
+library(tidyverse)
+library(readxl)
+library(lubridate)
+
+
+
+bikes_tbl <- read_excel('bikes.xlsx')
+
+orderlines_tbl <- read_excel('orderlines.xlsx')
+
+bikeshops_tbl <- read_excel('bikeshops.xlsx')
+
+
+
+
+joined_tbl <- orderlines_tbl %>% 
+  left_join(bikes_tbl, by = c("product.id" = "bike.id")) %>%
+  left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
+
+
+
+wrangled_tbl <- joined_tbl %>% 
+  
+
+  
+  separate(col = location, into = c("city", "state"), sep = ", ") %>%
+  
+
+  
+  mutate(total.price = price * quantity)
+
+
+
+sales_by_location_tbl <- wrangled_tbl %>%
+  
+
+  
+  select(state, total.price) %>%
+  
+ 
+  
+  group_by(state) %>%
+  summarize(sales = sum(total.price)) %>%
+  
+
+  
+  mutate(sales.text = scales::dollar(sales, big.mark = ".", decimal.mark = ",", prefix = "", suffix = "  euro"))
+
+
+
+sales_by_location_tbl %>%
+  
+ 
+  ggplot(aes(x = state, y = sales)) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  
+  
+  geom_col(fill = "#2DC6D6") + # Use geom_col for a bar plot
+  geom_label(aes(label = sales.text)) + # Adding labels to the bars
+  geom_smooth(method = "lm", se = FALSE) + # Adding a trendline
+  
+
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = " ", 
+                                                    suffix = "  euro")) +
+  labs(
+    title    = "Revenue by state",
+    subtitle = "Upward Trend",
+    x = "State", # Override defaults for x and y
+    y = "Revenue"
+  )
+
+
+
+sales_by_location_year_tbl <- wrangled_tbl %>%
+  
+  
+  
+  select(order.date, total.price, state) %>%
+  mutate(year = year(order.date)) %>%
+  
+  
+  
+  group_by(year, state) %>%
+  summarise(sales = sum(total.price)) %>%
+  ungroup() %>%
+  
+  mutate(sales.text = scales::dollar(sales, big.mark = ".", 
+                                     decimal.mark = ",", 
+                                     prefix = "", 
+                                     suffix = "  euro"))  
+
+sales_by_location_year_tbl    
+
+
+
+sales_by_location_year_tbl %>%
+  
+
+  ggplot(aes(x = year, y = sales, fill = state)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  
+
+  geom_col() + # Run up to here to get a stacked bar plot
+  geom_smooth(method = "lm", se = FALSE) + # Adding a trendline
+  
+
+  facet_wrap(~ state) +
+  
+
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = "", 
+                                                    suffix = "  euro")) +
+  labs(
+    title = "Revenue by State and Year",
+    subtitle = "All The Products are Showing Increment In Revenue Except Saxony-Anhalt
+                             M.W.P. and Schleswig-Holstein",
+    fill = "States" # Changes the legend name to state
+  )
+
+result_2a <- sales_by_location_tbl
+
+write_rds(result_2a, "result2a.rds")
+
+result_2b <- sales_by_location_year_tbl
+
+write_rds(result_2b, "result2b.rds")
+
+
+```
